@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     err = fn_fuji_get_info(&info);
     CHECK("fuji info", err == FN_OK && strcmp(info.profile, "palmos-netlib") == 0);
     err = fn_wifi_get_status(&wifi);
-    CHECK("wifi status", err == FN_OK && wifi.link_state == 2 && wifi.ip[0]);
+    CHECK("wifi status before any connection", err == FN_OK && wifi.link_state == 0 && !wifi.ip[0]);
     err = fn_wifi_get_config(&config);
     CHECK("wifi config", err == FN_OK && config.ssid[0]);
 
@@ -69,6 +69,8 @@ int main(int argc, char **argv)
     for (i = 0; i < 3000; i++) big[i] = (char)('a' + i % 26);
     CHECK("GET body", err == FN_OK && total == 3000 && memcmp(buf, big, 3000) == 0);
     CHECK("GET close", fn_close(h) == FN_OK);
+    err = fn_wifi_get_status(&wifi);
+    CHECK("wifi status after a connection", err == FN_OK && wifi.link_state == 2 && wifi.ip[0]);
 
     /* 404, and a server that sends no Content-Length. */
     snprintf(url, sizeof(url), "http://127.0.0.1:%d/missing", http_port);

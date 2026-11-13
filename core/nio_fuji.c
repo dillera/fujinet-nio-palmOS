@@ -52,7 +52,10 @@ uint8_t nio_wifi(NioState *nio, uint8_t cmd, const uint8_t *in, uint16_t in_len,
     if (cap < 64) return NIO_ST_INVALID;
     switch (cmd) {
     case WIFI_GET_STATUS:
-        up = (uint8_t)(nio_net_up(nio) == NIO_ST_OK);
+        /* Report the link as it is. Opening NetLib here would make the
+         * system dial, or show its own "Incomplete setup" alert when no
+         * network service is set up; only a connection should do that. */
+        up = nio->net_up;
         ip[0] = 0;
         if (up) nio_sock_local_ip(ip, sizeof(ip));
         memset(out, 0, 12);
