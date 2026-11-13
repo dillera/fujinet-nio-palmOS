@@ -4,6 +4,7 @@
 NIO_LIB  ?= $(abspath ../nio/fujinet-nio-workspace/repos/fujinet-nio-lib)
 PALM_APPS ?= $(abspath ../nio/fujinet-palm)
 APPS     ?= FujiNetTest
+SHARED   ?= 0
 DOCKER = docker run --rm --platform linux/amd64 -v $(CURDIR):/src -v $(NIO_LIB):/nio-lib:ro \
          -v $(PALM_APPS):/apps:ro -w /src palmdev
 
@@ -11,7 +12,7 @@ test:
 	NIO_LIB=$(NIO_LIB) tests/run.sh
 
 palm:
-	$(DOCKER) make -f palm.mk APPS="$(APPS)"
+	$(DOCKER) make -f palm.mk APPS="$(APPS)" SHARED=$(SHARED)
 
 # Bluetooth serial listener for the Mac gateway (docs/mac-bluetooth-gateway.md).
 bt-bridge: build/bt-serial-bridge

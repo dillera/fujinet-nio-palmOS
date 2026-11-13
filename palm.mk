@@ -18,6 +18,17 @@ SRCS     = $(LIB_SRCS) $(wildcard /src/core/*.c) /src/platform/palmos/nio_sock_p
 OBJS     = $(addprefix $(OUT)/obj/,$(notdir $(SRCS:.c=.o)))
 VPATH    = /nio-lib/src/common /src/core /src/platform/palmos /src/transport
 
+# SHARED=1: the apps link NioLib's client archive (fujinet-nio-lib's palmos-shared build) and use the installed
+# NioLib, whose Network transport is this NIO; otherwise they carry the NIO themselves.
+SHARED ?= 0
+NIOLIB_BUILD ?= /nio-lib/build/palmos-shared-3.5
+ifeq ($(SHARED),1)
+APP_LIB = $(NIOLIB_BUILD)/libniolib-client.a
+OUT := $(OUT)-shared
+else
+APP_LIB = $(LIB)
+endif
+
 all: $(APPS:%=$(OUT)/%.prc)
 
 $(LIB): $(OBJS)
@@ -30,13 +41,14 @@ $(OUT)/obj/%.o: %.c
 
 # Each app builds in a scratch copy, so fujinet-palm's own serial build is
 # left alone.
-$(OUT)/%.prc: $(LIB) FORCE
+$(OUT)/%.prc: $(if $(filter 1,$(SHARED)),,$(LIB)) FORCE
+	@mkdir -p $(OUT)
 	rm -rf /tmp/b && mkdir -p /tmp/b/apps
 	cp -R /apps/common /tmp/b/common
 	cp /apps/apps/app.mk /tmp/b/apps/
 	cp -R /apps/apps/$* /tmp/b/apps/$*
 	$(MAKE) -C /tmp/b/apps/$* clean
-	$(MAKE) -C /tmp/b/apps/$* NIO_LIB=/nio-lib LIBS=$(LIB)
+	$(MAKE) -C /tmp/b/apps/$* NIO_LIB=/nio-lib LIBS=$(APP_LIB)
 	m68k-palmos-size /tmp/b/apps/$*/$*
 	cp /tmp/b/apps/$*/$*.prc $@
 

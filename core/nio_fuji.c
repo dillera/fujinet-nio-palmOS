@@ -57,7 +57,7 @@ uint8_t nio_wifi(NioState *nio, uint8_t cmd, const uint8_t *in, uint16_t in_len,
          * network service is set up; only a connection should do that. */
         up = nio->net_up;
         ip[0] = 0;
-        if (up) nio_sock_local_ip(ip, sizeof(ip));
+        if (up) nio_sock_local_ip(&nio->net, ip, sizeof(ip));
         memset(out, 0, 12);
         out[0] = 1;
         out[1] = (uint8_t)(up ? WIFI_LINK_CONNECTED : WIFI_LINK_DOWN);

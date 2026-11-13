@@ -10,6 +10,7 @@
 #define NIO_H
 
 #include <stdint.h>
+#include "nio_sock.h"
 
 #define NIO_VERSION_STRING "palmos-0.1"
 #define NIO_PROFILE_STRING "palmos-netlib"
@@ -48,6 +49,7 @@ typedef struct {
     uint8_t  skip_line;       /* http: inside a header line longer than rx */
     uint8_t  body_open;       /* http: body of unknown length being gathered in rx */
     uint8_t  pad;
+    NioNet  *net;             /* the state's, for the session's socket calls */
     uint16_t handle;
     uint16_t http_status;
     long     sock;
@@ -66,6 +68,7 @@ typedef struct {
     uint8_t    net_up;
     uint8_t    reserved;
     uint16_t   next_handle;
+    NioNet     net;
     NioSession sessions[NIO_SESSIONS];
 } NioState;
 
@@ -89,6 +92,10 @@ uint8_t nio_wifi(NioState *nio, uint8_t cmd, const uint8_t *in, uint16_t in_len,
 
 /* Brings the network stack up on first use. */
 uint8_t nio_net_up(NioState *nio);
+/* Closes every session and takes the network stack down (NIO Config's Disconnect). */
+void nio_net_down(NioState *nio);
+/* Sessions open now. */
+uint8_t nio_sessions_open(const NioState *nio);
 
 /* Little-endian helpers. */
 #define NIO_GET16(p) ((uint16_t)((p)[0] | ((uint16_t)(p)[1] << 8)))

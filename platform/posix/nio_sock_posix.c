@@ -8,11 +8,12 @@
 #include <unistd.h>
 #include "nio_sock.h"
 
-int nio_sock_start(void) { return 0; }
-void nio_sock_stop(void) {}
+int nio_sock_start(NioNet *net) { (void)net; return 0; }
+void nio_sock_stop(NioNet *net) { (void)net; }
 
-int nio_sock_tcp_connect(const char *host, uint16_t port, long *sock)
+int nio_sock_tcp_connect(NioNet *net, const char *host, uint16_t port, long *sock)
 {
+    (void)net;
     struct addrinfo hints, *res, *ai;
     char service[8];
     int fd = -1;
@@ -35,14 +36,16 @@ int nio_sock_tcp_connect(const char *host, uint16_t port, long *sock)
     return 0;
 }
 
-int nio_sock_send(long sock, const uint8_t *data, uint16_t len)
+int nio_sock_send(NioNet *net, long sock, const uint8_t *data, uint16_t len)
 {
+    (void)net;
     ssize_t n = send((int)sock, data, len, 0);
     return n < 0 ? NIO_SOCK_ERROR : (int)n;
 }
 
-int nio_sock_recv(long sock, uint8_t *data, uint16_t max, uint16_t wait_ms)
+int nio_sock_recv(NioNet *net, long sock, uint8_t *data, uint16_t max, uint16_t wait_ms)
 {
+    (void)net;
     struct pollfd p;
     ssize_t n;
 
@@ -53,9 +56,10 @@ int nio_sock_recv(long sock, uint8_t *data, uint16_t max, uint16_t wait_ms)
     return n < 0 ? NIO_SOCK_ERROR : (int)n;
 }
 
-void nio_sock_close(long sock) { close((int)sock); }
+void nio_sock_close(NioNet *net, long sock) { (void)net; close((int)sock); }
 
-void nio_sock_local_ip(char *out, uint16_t cap)
+void nio_sock_local_ip(NioNet *net, char *out, uint16_t cap)
 {
+    (void)net;
     snprintf(out, cap, "127.0.0.1");
 }

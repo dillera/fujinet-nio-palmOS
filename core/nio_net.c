@@ -34,19 +34,30 @@
 
 #define HOST_MAX 96
 
-static const char *const kMethods[] = { "GET", "POST", "PUT", "DELETE", "HEAD" };
+/* A switch, not a table of pointers: such a table would be global data, which
+ * the core can't have in a Palm shared library. */
+static const char *method_name(uint8_t method)
+{
+    switch (method) {
+    case 2: return "POST";
+    case 3: return "PUT";
+    case 4: return "DELETE";
+    case 5: return "HEAD";
+    }
+    return "GET";
+}
 
 uint8_t nio_net_up(NioState *nio)
 {
     if (nio->net_up) return NIO_ST_OK;
-    if (nio_sock_start() != 0) return NIO_ST_NOT_READY;
+    if (nio_sock_start(&nio->net) != 0) return NIO_ST_NOT_READY;
     nio->net_up = 1;
     return NIO_ST_OK;
 }
 
 static void session_close(NioSession *s)
 {
-    if (s->used) nio_sock_close(s->sock);
+    if (s->used) nio_sock_close(s->net, s->sock);
     s->used = 0;
 }
 
@@ -55,8 +66,23 @@ void nio_shutdown(NioState *nio)
     uint8_t i;
 
     for (i = 0; i < NIO_SESSIONS; i++) session_close(&nio->sessions[i]);
-    if (nio->net_up) nio_sock_stop();
+    if (nio->net_up) nio_sock_stop(&nio->net);
     nio->net_up = 0;
+}
+
+void nio_net_down(NioState *nio)
+{
+    nio->net.pad = 1;                   /* the stack's link goes now, not after its idle time */
+    nio_shutdown(nio);
+    nio->net.pad = 0;
+}
+
+uint8_t nio_sessions_open(const NioState *nio)
+{
+    uint8_t i, n = 0;
+
+    for (i = 0; i < NIO_SESSIONS; i++) n = (uint8_t)(n + nio->sessions[i].used);
+    return n;
 }
 
 static NioSession *find(NioState *nio, uint16_t handle)
@@ -79,11 +105,12 @@ static uint8_t send_all(NioSession *s, const uint8_t *p, uint16_t len)
     int n;
 
     while (len) {
-        n = nio_sock_send(s->sock, p, len);
+        n = nio_sock_send(s->net, s->sock, p, len);
         if (n <= 0) {
             s->failed = 1;
             return 0;
         }
+        s->net->bytesOut += (uint32_t)n;
         p += n;
         len = (uint16_t)(len - n);
     }
@@ -224,13 +251,14 @@ static uint8_t http_headers(NioSession *s, uint16_t wait_ms)
     while (!s->headers_done) {
         if (s->failed) return NIO_ST_IO_ERROR;
         if (s->peer_closed) return NIO_ST_IO_ERROR;   /* closed before the headers ended */
-        n = nio_sock_recv(s->sock, s->rx + s->rx_len, (uint16_t)(NIO_RX_BYTES - s->rx_len),
+        n = nio_sock_recv(s->net, s->sock, s->rx + s->rx_len, (uint16_t)(NIO_RX_BYTES - s->rx_len),
                           wait_ms);
         if (n == NIO_SOCK_WOULDBLOCK) return NIO_ST_NOT_READY;
         if (n < 0) {
             s->failed = 1;
             return NIO_ST_IO_ERROR;
         }
+        s->net->bytesIn += (uint32_t)n;
         if (n == 0) s->peer_closed = 1;
         s->rx_len = (uint16_t)(s->rx_len + n);
         start = 0;
@@ -333,7 +361,12 @@ static uint8_t open_cmd(NioState *nio, const uint8_t *in, uint16_t len, uint8_t 
 
     status = nio_net_up(nio);
     if (status != NIO_ST_OK) return status;
-    if (nio_sock_tcp_connect(host, port, &s->sock) != 0) return NIO_ST_IO_ERROR;
+    if (nio_sock_tcp_connect(&nio->net, host, port, &s->sock) != 0) {
+        nio->net.failures++;
+        return NIO_ST_IO_ERROR;
+    }
+    nio->net.connects++;
+    s->net = &nio->net;
     s->used = 1;
     s->http = http;
     s->handle = nio->next_handle++;
@@ -341,7 +374,7 @@ static uint8_t open_cmd(NioState *nio, const uint8_t *in, uint16_t len, uint8_t 
 
     if (http) {
         s->head_only = (uint8_t)(method == 5);
-        puts_(s, kMethods[method - 1]);
+        puts_(s, method_name(method));
         puts_(s, " ");
         if (path >= url_len || url[path] != '/') puts_(s, "/");
         put(s, url + path, (uint16_t)(url_len - path));
@@ -430,12 +463,13 @@ static uint8_t read_cmd(NioState *nio, const uint8_t *in, uint16_t len, uint8_t 
         s->rx_len = (uint16_t)(s->rx_len - got);
     } else if (max && !s->peer_closed) {
         if (s->failed) return NIO_ST_IO_ERROR;
-        n = nio_sock_recv(s->sock, out + 12, max, (uint16_t)(s->http ? HTTP_WAIT_MS : 0));
+        n = nio_sock_recv(s->net, s->sock, out + 12, max, (uint16_t)(s->http ? HTTP_WAIT_MS : 0));
         if (n == NIO_SOCK_WOULDBLOCK) return NIO_ST_NOT_READY;
         if (n < 0) {
             s->failed = 1;
             return NIO_ST_IO_ERROR;
         }
+        s->net->bytesIn += (uint32_t)n;
         if (n == 0) s->peer_closed = 1;
         got = (uint16_t)n;
     }
