@@ -13,7 +13,13 @@ test:
 palm:
 	$(DOCKER) make -f palm.mk APPS="$(APPS)"
 
+# Bluetooth serial listener for the Mac gateway (docs/mac-bluetooth-gateway.md).
+bt-bridge: build/bt-serial-bridge
+build/bt-serial-bridge: tools/bt-serial-bridge.m
+	mkdir -p build
+	clang -fobjc-arc -Wall -O1 -o $@ $< -framework Foundation -framework IOBluetooth
+
 clean:
 	rm -rf build
 
-.PHONY: test palm clean
+.PHONY: test palm bt-bridge clean

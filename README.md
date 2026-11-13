@@ -3,7 +3,9 @@
 FujiNet NIO's device side running on the Palm itself, so FujiNet apps need no
 FujiNet hardware: the Palm's own network link does the work. The target
 device is a Sony Clie PEG-TG50 (Palm OS 5, Bluetooth), reaching the network
-over Bluetooth through a Linux machine. Any Palm with a working NetLib
+over Bluetooth through a Mac ([docs/mac-bluetooth-gateway.md](docs/mac-bluetooth-gateway.md),
+working) or a Linux machine ([docs/bluetooth-gateway.md](docs/bluetooth-gateway.md),
+untested). Any Palm with a working NetLib
 connection (OS 3.5 and later, 68k or OS 5) should do.
 
 This is a reimplementation in C, not a build of fujinet-nio's C++20 source,
@@ -60,3 +62,7 @@ rig.sh cmd <run-dir> install build/palm/FujiNetTest.prc
 
 CloudpilotEmu's OS 5 emulation has no networking, and nothing emulates
 Bluetooth, so the Bluetooth link can only be tried on the real device.
+
+On the Clie, install over USB with palm-sync (`shared/palm-sync`, after
+`npm ci && npx tsc`): run `node dist/bin/cli.js push --usb <file.prc>`, then
+tap HotSync (Local, Cradle/Cable) on the Clie.
