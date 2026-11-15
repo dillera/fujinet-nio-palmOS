@@ -12,6 +12,16 @@ This is a reimplementation in C, not a build of fujinet-nio's C++20 source,
 which the Palm toolchain cannot compile. Palm OS runs one app at a time, so
 NIO is a library inside each app, not a background process.
 
+## In NioLib
+
+The same core now also runs inside NioLib, the installed Palm OS shared
+library, as its Network transport (fujinet-nio-lib, branch
+`feat/palmos5-network`, `src/platform/palmos/shared/netlib/`). Apps then link
+NioLib's client archive and the installed library does the networking: NIO
+Config picks the transport. `make palm SHARED=1` builds the FI apps that way
+(NioLib's `make palmos-shared` first). SYN-ACK WIRE's Palm OS 5 client
+(dillera/syn-ack-wire, branch `palm`) links it by default.
+
 ## How it fits together
 
 ```
@@ -66,3 +76,7 @@ Bluetooth, so the Bluetooth link can only be tried on the real device.
 On the Clie, install over USB with palm-sync (`shared/palm-sync`, after
 `npm ci && npx tsc`): run `node dist/bin/cli.js push --usb <file.prc>`, then
 tap HotSync (Local, Cradle/Cable) on the Clie.
+
+## License
+
+GPL-3.0, as fujinet-nio-lib: see [LICENSE](LICENSE).
