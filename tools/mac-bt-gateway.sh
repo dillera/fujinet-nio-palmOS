@@ -44,8 +44,15 @@ trap 'exit 130' INT TERM
 
 sysctl -w net.inet.ip.forwarding=1 >/dev/null
 # The system ruleset holds the com.apple anchors the NAT rule goes into.
+# The Mac can route a reply for the Palm, translated back by the NAT, out
+# of $UPLINK again instead of over PPP (DNS replies did on 2026-11-15, after
+# working for days): route-to sends anything for the Palm over PPP. pppd
+# names the interface ppp0 unless another PPP link is up (PPP_IF=ppp1).
 pfctl -q -f /etc/pf.conf
-echo "nat on $UPLINK from 192.168.77.0/24 to any -> ($UPLINK)" |
+PPP_IF=${PPP_IF:-ppp0}
+printf '%s\n' \
+    "nat on $UPLINK from 192.168.77.0/24 to any -> ($UPLINK)" \
+    "pass out quick on $UPLINK route-to ($PPP_IF 192.168.77.2) inet from any to 192.168.77.0/24 no state" |
     pfctl -q -a com.apple/fujinet-palm -f -
 PF_TOKEN=$(pfctl -E 2>&1 | awk '/Token/ { print $3 }')
 
